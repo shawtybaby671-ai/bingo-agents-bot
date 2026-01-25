@@ -2,6 +2,11 @@ services:
   - type: web
     name: bingo-agents-bot
     env: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python bot.py"
+    envVars:
+      - key: CARGO_HOME
+        value: /tmp/cargo
+      - key: PYTHON_VERSION
+        value: 3.12.0
+    buildCommand: "mkdir -p /tmp/cargo && pip install --upgrade pip && pip install -r requirements.txt"
+    startCommand: "python agents.py"
     plan: free

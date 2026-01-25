@@ -5,8 +5,8 @@ services:
     envVars:
       - key: CARGO_HOME
         value: /tmp/cargo
-      - key: PYTHON_VERSION
-        value: 3.12.0
+      - key: CARGO_NET_GIT_FETCH_WITH_CLI
+        value: true
     buildCommand: "mkdir -p /tmp/cargo && pip install --upgrade pip && pip install -r requirements.txt"
     startCommand: "python agents.py"
     plan: free

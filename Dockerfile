@@ -1,8 +1,12 @@
 # Use the official Python image as a base image
-FROM python:3.10-slim
+FROM python:3.12-slim
 
 # Set the working directory in the container
 WORKDIR /app
+
+# Set CARGO_HOME to a writable directory
+ENV CARGO_HOME=/tmp/cargo
+RUN mkdir -p /tmp/cargo
 
 # Copy the requirements file into the container
 COPY requirements.txt .
@@ -17,4 +21,4 @@ COPY . .
 EXPOSE 8000
 
 # Command to run the application
-CMD ["python", "bot.py"]
+CMD ["python", "agents.py"]

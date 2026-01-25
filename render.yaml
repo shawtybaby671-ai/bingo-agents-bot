@@ -5,8 +5,8 @@ services:
     envVars:
       - key: CARGO_HOME
         value: /tmp/cargo
-      - key: CARGO_NET_GIT_FETCH_WITH_CLI
-        value: true
-    buildCommand: "mkdir -p /tmp/cargo && pip install --upgrade pip && pip install -r requirements.txt"
+      - key: PIP_DEFAULT_TIMEOUT
+        value: "100"
+    buildCommand: "mkdir -p /tmp/cargo && pip install --upgrade pip && pip install --no-cache-dir --timeout=100 -r requirements.txt"
     startCommand: "python agents.py"
     plan: free

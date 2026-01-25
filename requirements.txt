@@ -1,5 +1,6 @@
 python-telegram-bot==20.3
-crewai
-easyocr
-pillow
-requests
+crewai[tools]==0.95.0
+easyocr==1.7.2
+pillow==11.0.0
+requests==2.32.3
+litellm==1.80.0

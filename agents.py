@@ -1,6 +1,6 @@
 import os
-from telegram import Bot
-from telegram.ext import Updater, CommandHandler
+from telegram import Bot, Update
+from telegram.ext import Application, CommandHandler, ContextTypes
 
 # Environment variables for secrets
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -10,19 +10,17 @@ GROUP_CHAT_ID = int(os.getenv('GROUP_CHAT_ID', '-1001234567890'))
 # Initialize bot
 bot = Bot(token=TELEGRAM_TOKEN)
 
-def start(update, context):
-    update.message.reply_text("Bot is running!")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Bot is running!")
 
 def main():
-    updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
-    dp = updater.dispatcher
+    application = Application.builder().token(TELEGRAM_TOKEN).build()
 
     # Command handlers
-    dp.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("start", start))
 
     # Start polling
-    updater.start_polling()
-    updater.idle()
+    application.run_polling()
 
 if __name__ == "__main__":
     main()

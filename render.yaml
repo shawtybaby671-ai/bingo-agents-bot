@@ -7,6 +7,6 @@ services:
         value: /tmp/cargo
       - key: PIP_DEFAULT_TIMEOUT
         value: "100"
-    buildCommand: "mkdir -p /tmp/cargo && pip install --upgrade pip && pip install --no-cache-dir --timeout=100 -r requirements.txt"
-    startCommand: "python agents.py"
+    buildCommand: mkdir -p /tmp/cargo && pip install --upgrade pip && pip install --no-cache-dir --timeout=100 -r requirements.txt
+    startCommand: python agents.py
     plan: free

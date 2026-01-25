@@ -1,5 +1,5 @@
 services:
-  - type: web
+  - type: worker
     name: bingo-agents-bot
     env: python
     envVars:

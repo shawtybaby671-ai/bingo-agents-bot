@@ -117,7 +117,8 @@ def generate_ball_image(number: int, letter: str) -> io.BytesIO:
         # Try common font locations
         font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
         font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 80)
-    except:
+    except (IOError, OSError):
+        # Fall back to default font if TrueType font not available
         font_large = ImageFont.load_default()
         font_small = ImageFont.load_default()
     
@@ -350,10 +351,13 @@ async def players(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Build player list
+    # Note: Currently the system stores one card per user_id in player_cards dict
+    # If multi-card support is added, this would need to count cards differently
     player_list = []
     for user_id in sorted(game.player_cards.keys()):
         player_name = game.player_names.get(user_id, f"User {user_id}")
-        card_count = 1  # Currently each player has 1 card
+        # Each user_id maps to one card in the current implementation
+        card_count = 1
         player_list.append(f"• {player_name}: {card_count} card")
     
     players_text = (

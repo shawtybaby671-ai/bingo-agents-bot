@@ -9,9 +9,6 @@ TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 ADMIN_ID = int(os.getenv('ADMIN_ID', '0'))
 GROUP_CHAT_ID = int(os.getenv('GROUP_CHAT_ID', '-1001234567890'))
 
-# Initialize bot
-bot = Bot(token=TELEGRAM_TOKEN)
-
 # Game state storage
 class BingoGame:
     def __init__(self):

@@ -17,7 +17,11 @@ class BingoGame:
         self.active = False
     
     def generate_card(self) -> List[List[int]]:
-        """Generate a 5x5 bingo card with random numbers."""
+        """Generate a 5x5 bingo card with random numbers.
+        
+        Card is stored in column-major order: card[col_idx][row_idx]
+        This matches the B-I-N-G-O layout where each letter represents a column.
+        """
         card = []
         # B: 1-15, I: 16-30, N: 31-45, G: 46-60, O: 61-75
         ranges = [(1, 15), (16, 30), (31, 45), (46, 60), (61, 75)]
@@ -26,7 +30,7 @@ class BingoGame:
             column = random.sample(range(start, end + 1), 5)
             card.append(column)
         
-        # Make center a free space
+        # Make center a free space (N column, middle row)
         card[2][2] = 0  # Free space
         
         return card
@@ -39,16 +43,19 @@ class BingoGame:
         return False
     
     def check_win(self, card: List[List[int]]) -> bool:
-        """Check if a card has a winning pattern."""
-        # Transpose for easier checking
+        """Check if a card has a winning pattern.
+        
+        Since card is stored as card[col][row], we need to transpose to check rows.
+        """
+        # Transpose to convert columns to rows for easier row checking
         transposed = list(zip(*card))
         
-        # Check rows
+        # Check rows (each row from the transposed data)
         for row in transposed:
             if all(num == 0 or num in self.called_numbers for num in row):
                 return True
         
-        # Check columns
+        # Check columns (original card structure is already column-major)
         for col in card:
             if all(num == 0 or num in self.called_numbers for num in col):
                 return True
@@ -116,7 +123,12 @@ async def newgame(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def get_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Get or view player's bingo card."""
+    """Get or view player's bingo card.
+    
+    Note: Cards are randomly generated. While the probability of duplicate cards
+    is low given ~111 quadrillion possible combinations, duplicates are theoretically
+    possible with enough players.
+    """
     if not game.active:
         await update.message.reply_text("❌ No active game. Ask admin to start one with /newgame")
         return
@@ -151,7 +163,18 @@ async def call_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         number = int(context.args[0])
         if game.call_number(number):
-            letter = ['B', 'I', 'N', 'G', 'O'][(number - 1) // 15]
+            # Map number to letter explicitly
+            if 1 <= number <= 15:
+                letter = 'B'
+            elif 16 <= number <= 30:
+                letter = 'I'
+            elif 31 <= number <= 45:
+                letter = 'N'
+            elif 46 <= number <= 60:
+                letter = 'G'
+            else:  # 61-75
+                letter = 'O'
+            
             await update.message.reply_text(
                 f"📢 Calling: *{letter}-{number}*\n\n"
                 f"Total called: {len(game.called_numbers)}",

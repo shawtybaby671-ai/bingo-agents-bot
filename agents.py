@@ -14,6 +14,7 @@ class BingoGame:
     def __init__(self):
         self.called_numbers: Set[int] = set()
         self.player_cards: Dict[int, List[List[int]]] = {}  # user_id -> card
+        self.player_names: Dict[int, str] = {}  # user_id -> display name
         self.active = False
     
     def generate_card(self) -> List[List[int]]:
@@ -102,6 +103,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/call <number> - Call a number (admin only)\n"
         "/check - Check if you won\n"
         "/numbers - View all called numbers\n"
+        "/players - View list of players and card counts\n"
         "/status - View game status"
     )
     await update.message.reply_text(help_text, parse_mode='Markdown')
@@ -116,6 +118,7 @@ async def newgame(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     game.called_numbers.clear()
     game.player_cards.clear()
+    game.player_names.clear()
     game.active = True
     
     await update.message.reply_text(
@@ -134,6 +137,17 @@ async def get_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     user_id = update.effective_user.id
+    user = update.effective_user
+    
+    # Store player name for display purposes
+    if user_id not in game.player_names:
+        # Prefer username, fall back to first_name, then to user_id
+        if user.username:
+            game.player_names[user_id] = f"@{user.username}"
+        elif user.first_name:
+            game.player_names[user_id] = user.first_name
+        else:
+            game.player_names[user_id] = f"User {user_id}"
     
     if user_id not in game.player_cards:
         game.player_cards[user_id] = game.generate_card()
@@ -244,6 +258,30 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(status_text, parse_mode='Markdown')
 
+async def players(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show list of players and their card counts."""
+    if not game.active:
+        await update.message.reply_text("❌ No active game.")
+        return
+    
+    if not game.player_cards:
+        await update.message.reply_text("👥 No players have joined yet.\n\nUse /card to get your bingo card!")
+        return
+    
+    # Build player list
+    player_list = []
+    for user_id in sorted(game.player_cards.keys()):
+        player_name = game.player_names.get(user_id, f"User {user_id}")
+        card_count = 1  # Currently each player has 1 card
+        player_list.append(f"• {player_name}: {card_count} card")
+    
+    players_text = (
+        f"👥 *Players in Game* ({len(game.player_cards)}):\n\n"
+        + "\n".join(player_list)
+    )
+    
+    await update.message.reply_text(players_text, parse_mode='Markdown')
+
 def main():
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
@@ -254,6 +292,7 @@ def main():
     application.add_handler(CommandHandler("call", call_number))
     application.add_handler(CommandHandler("check", check_win))
     application.add_handler(CommandHandler("numbers", show_numbers))
+    application.add_handler(CommandHandler("players", players))
     application.add_handler(CommandHandler("status", status))
 
     # Start polling

@@ -37,6 +37,7 @@ This is a Python-based Telegram bot designed to manage bingo games with OCR and 
 - `/call <number>`: Call a number (1-75, admin only)
 - `/check`: Check if you have won
 - `/numbers`: View all called numbers
+- `/players`: View list of players and their card counts
 - `/status`: View current game status
 
 ## How to Play

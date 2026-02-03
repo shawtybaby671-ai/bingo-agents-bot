@@ -34,11 +34,18 @@ This is a Python-based Telegram bot designed to manage bingo games with OCR and 
 - `/start`: Show help message with available commands
 - `/newgame`: Start a new bingo game (admin only)
 - `/card`: Get or view your bingo card
-- `/call <number>`: Call a number (1-75, admin only)
+- `/call <number>`: Call a number with visual ball image (1-75, admin only)
+- `/lastcall`: Replay last called number with its ball image
 - `/check`: Check if you have won
 - `/numbers`: View all called numbers
 - `/players`: View list of players and their card counts
 - `/status`: View current game status
+
+## Multimedia Features
+- **Visual Ball Display**: When numbers are called, a colorful bingo ball image is automatically sent showing the letter and number
+- **Ball Colors**: Each column has a distinct color (B=Red, I=Teal, N=Yellow, G=Green, O=Pink)
+- **Last Call Replay**: Players can use `/lastcall` to see the most recent call again
+- **Real-time Updates**: All players see the ball image immediately when a number is called
 
 ## How to Play
 1. Admin starts a new game with `/newgame`
@@ -55,3 +62,6 @@ This is a Python-based Telegram bot designed to manage bingo games with OCR and 
 - Win detection for rows, columns, and diagonals
 - Admin-controlled number calling
 - Card persistence during active game
+- **Visual ball images** with color-coded display for each column
+- **Player list** showing all active players and their cards
+- **Last call replay** for players who missed a call

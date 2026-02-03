@@ -1,8 +1,10 @@
 import os
 import random
-from typing import Dict, List, Set, Optional
+import io
+from typing import Dict, List, Set, Optional, Tuple
 from telegram import Bot, Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+from PIL import Image, ImageDraw, ImageFont
 
 # Environment variables for secrets
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
@@ -16,6 +18,7 @@ class BingoGame:
         self.player_cards: Dict[int, List[List[int]]] = {}  # user_id -> card
         self.player_names: Dict[int, str] = {}  # user_id -> display name
         self.active = False
+        self.last_call: Optional[Tuple[int, str]] = None  # (number, letter)
     
     def generate_card(self) -> List[List[int]]:
         """Generate a 5x5 bingo card with random numbers.
@@ -89,6 +92,71 @@ class BingoGame:
             rows.append(" ".join(row))
         return header + "\n".join(rows)
 
+# Helper functions for multimedia
+def generate_ball_image(number: int, letter: str) -> io.BytesIO:
+    """Generate a bingo ball image with the called number."""
+    # Create image
+    size = 400
+    img = Image.new('RGB', (size, size), color='white')
+    draw = ImageDraw.Draw(img)
+    
+    # Draw ball (circle)
+    margin = 50
+    ball_color = {
+        'B': '#FF6B6B',  # Red
+        'I': '#4ECDC4',  # Teal
+        'N': '#FFE66D',  # Yellow
+        'G': '#95E1D3',  # Light green
+        'O': '#F38181'   # Pink
+    }.get(letter, '#CCCCCC')
+    
+    draw.ellipse([margin, margin, size-margin, size-margin], fill=ball_color, outline='black', width=5)
+    
+    # Try to load a font, fall back to default if not available
+    try:
+        # Try common font locations
+        font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 120)
+        font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 80)
+    except:
+        font_large = ImageFont.load_default()
+        font_small = ImageFont.load_default()
+    
+    # Draw letter at top
+    letter_text = letter
+    letter_bbox = draw.textbbox((0, 0), letter_text, font=font_small)
+    letter_width = letter_bbox[2] - letter_bbox[0]
+    letter_x = (size - letter_width) // 2
+    draw.text((letter_x, 80), letter_text, fill='black', font=font_small)
+    
+    # Draw number in center
+    number_text = str(number)
+    number_bbox = draw.textbbox((0, 0), number_text, font=font_large)
+    number_width = number_bbox[2] - number_bbox[0]
+    number_x = (size - number_width) // 2
+    draw.text((number_x, 180), number_text, fill='black', font=font_large)
+    
+    # Save to BytesIO
+    bio = io.BytesIO()
+    bio.name = f'ball_{letter}_{number}.png'
+    img.save(bio, 'PNG')
+    bio.seek(0)
+    return bio
+
+def generate_tts_audio(text: str) -> Optional[io.BytesIO]:
+    """Generate text-to-speech audio for the called number.
+    
+    Note: This is a placeholder. For production, integrate with:
+    - Google Cloud Text-to-Speech API
+    - Amazon Polly
+    - gTTS (Google Text-to-Speech) library
+    - Or other TTS service
+    
+    Returns None for now as TTS requires additional setup.
+    """
+    # Placeholder - would implement actual TTS here
+    # For now, we'll just send the image and text
+    return None
+
 # Global game instance
 game = BingoGame()
 
@@ -100,7 +168,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/start - Show this help message\n"
         "/newgame - Start a new bingo game (admin only)\n"
         "/card - Get or view your bingo card\n"
-        "/call <number> - Call a number (admin only)\n"
+        "/call <number> - Call a number with image & audio (admin only)\n"
+        "/lastcall - Replay last called number with image\n"
         "/check - Check if you won\n"
         "/numbers - View all called numbers\n"
         "/players - View list of players and card counts\n"
@@ -119,6 +188,7 @@ async def newgame(update: Update, context: ContextTypes.DEFAULT_TYPE):
     game.called_numbers.clear()
     game.player_cards.clear()
     game.player_names.clear()
+    game.last_call = None
     game.active = True
     
     await update.message.reply_text(
@@ -159,7 +229,7 @@ async def get_card(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(card_text, parse_mode='Markdown')
 
 async def call_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Call a number (admin only)."""
+    """Call a number (admin only) with visual ball image and audio announcement."""
     user_id = update.effective_user.id
     
     if user_id != ADMIN_ID:
@@ -189,11 +259,22 @@ async def call_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:  # 61-75
                 letter = 'O'
             
-            await update.message.reply_text(
-                f"📢 Calling: *{letter}-{number}*\n\n"
-                f"Total called: {len(game.called_numbers)}",
+            # Store last call
+            game.last_call = (number, letter)
+            
+            # Generate and send ball image
+            ball_image = generate_ball_image(number, letter)
+            await update.message.reply_photo(
+                photo=ball_image,
+                caption=f"📢 *{letter}-{number}* called!\n\nTotal called: {len(game.called_numbers)}/75",
                 parse_mode='Markdown'
             )
+            
+            # Generate and send audio (if available)
+            audio = generate_tts_audio(f"{letter} {number}")
+            if audio:
+                await update.message.reply_voice(voice=audio)
+            
         else:
             await update.message.reply_text(
                 "❌ Invalid number or already called. Must be 1-75."
@@ -282,6 +363,31 @@ async def players(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(players_text, parse_mode='Markdown')
 
+async def lastcall(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show the last called number with its ball image."""
+    if not game.active:
+        await update.message.reply_text("❌ No active game.")
+        return
+    
+    if not game.last_call:
+        await update.message.reply_text("🔇 No numbers have been called yet.")
+        return
+    
+    number, letter = game.last_call
+    
+    # Generate and send ball image
+    ball_image = generate_ball_image(number, letter)
+    await update.message.reply_photo(
+        photo=ball_image,
+        caption=f"🔊 Last call: *{letter}-{number}*\n\nTotal called: {len(game.called_numbers)}/75",
+        parse_mode='Markdown'
+    )
+    
+    # Generate and send audio (if available)
+    audio = generate_tts_audio(f"{letter} {number}")
+    if audio:
+        await update.message.reply_voice(voice=audio)
+
 def main():
     application = Application.builder().token(TELEGRAM_TOKEN).build()
 
@@ -290,6 +396,7 @@ def main():
     application.add_handler(CommandHandler("newgame", newgame))
     application.add_handler(CommandHandler("card", get_card))
     application.add_handler(CommandHandler("call", call_number))
+    application.add_handler(CommandHandler("lastcall", lastcall))
     application.add_handler(CommandHandler("check", check_win))
     application.add_handler(CommandHandler("numbers", show_numbers))
     application.add_handler(CommandHandler("players", players))
